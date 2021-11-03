@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-master
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      role: master
+      tier: backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: master
+        tier: backend
+    spec:
+      volumes:
+        - name: redis-config
+          configMap:
+            name: redis-cm
+        - name: redis-tls
+          secret:
+            secretName: redis-crt
+            defaultMode: 256
+        - name: redis-ca
+          secret:
+            secretName: redis-ca
+            defaultMode: 256
+      containers:
+      - name: master
+        image: redis:6.2.1-alpine
+        command: ["/bin/sh"]
+        args: ["-c","redis-server /usr/local/etc/redis/redis-tls.conf"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        ports:
+        - containerPort: 6378
+        env:
+        - name: REDIS_TLS_CERT_FILE
+          value: /etc/ssl/certs/tls.crt 
+        - name: REDIS_TLS_KEY_FILE
+          value:  /etc/ssl/certs/tls.key
+        - name: REDIS_TLS_CA_FILE
+          value: /etc/ssl/ca/ca.crt
+        volumeMounts:
+          - name: redis-config
+            mountPath: /usr/local/etc/redis/redis-tls.conf
+            subPath: redis-tls.conf
+          - name: redis-tls
+            mountPath: /etc/ssl/certs
+            readOnly: true
+          - name: redis-ca
+            mountPath: /etc/ssl/ca/ca.crt
+            subPath: ca.crt
+            readOnly: true
+ 
